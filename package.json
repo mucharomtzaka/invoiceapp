@@ -1,0 +1,103 @@
+{
+  "name": "kwitansi-app",
+  "version": "1.0.0",
+  "private": true,
+  "main": "desktop/main.cjs",
+  "scripts": {
+    "dev": "next dev",
+    "desktop:dev": "node desktop/dev.cjs",
+    "build": "prisma generate && next build",
+    "build:desktop": "npm run build && npm run prepare:desktop && electron-builder --mac dmg",
+    "prepare:desktop": "node scripts/prepare-desktop.cjs",
+    "build:desktop:mac": "npm run build && npm run prepare:desktop && electron-builder --mac dmg",
+    "build:desktop:windows": "node scripts/build-windows.cjs",
+    "build:desktop:linux": "npm run build && npm run prepare:desktop && electron-builder --linux AppImage",
+    "start": "node scripts/start-production.cjs",
+    "lint": "tsc --noEmit",
+    "test": "node --experimental-strip-types --test tests/*.test.mjs",
+    "db:push": "prisma db push",
+    "db:studio": "prisma studio"
+  },
+  "dependencies": {
+    "@prisma/adapter-better-sqlite3": "^7.10.1",
+    "@prisma/client": "^7.10.1",
+    "better-sqlite3": "13.2.0",
+    "dotenv": "^17.4.2",
+    "exceljs": "^3.4.0",
+    "lucide-react": "^0.468.0",
+    "next": "^16.4.6",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@electron/rebuild": "^4.0.3",
+    "@types/node": "^22.10.2",
+    "@types/react": "^19.0.2",
+    "@types/react-dom": "^19.0.2",
+    "electron": "^45.0.0",
+    "electron-builder": "^26.0.12",
+    "prisma": "^7.10.1",
+    "typescript": "^5.7.2"
+  },
+  "build": {
+    "appId": "id.invoiceapp.desktop",
+    "productName": "InvoiceApp",
+    "asar": true,
+    "asarUnpack": [
+      "**/*.node"
+    ],
+    "npmRebuild": true,
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "desktop/main.cjs",
+      ".next/**/*",
+      "src/generated/prisma/**/*",
+      "next.config.mjs",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "desktop/assets/initial.db",
+        "to": "initial.db"
+      }
+    ],
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "category": "public.app-category.business",
+      "identity": null
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "category": "Office"
+    }
+  },
+  "overrides": {
+    "better-sqlite3": "13.2.0"
+  }
+}

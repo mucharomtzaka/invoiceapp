@@ -1,0 +1,108 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Receipt {
+  id String @id @default(cuid())
+  receiptNumber String @unique
+  transactionType String @default("receipt")
+  transactionDate DateTime
+  transactionTime String
+  userId String?
+  businessProfileId String?
+  customerName String @default("Umum")
+  customerAddress String?
+  description String?
+  orientation String @default("portrait")
+  paperSize String @default("A4")
+  subtotal Int
+  discountType String @default("none")
+  discountValue Float @default(0)
+  discountAmount Int @default(0)
+  dppLabel String @default("DPP")
+  dpp Int
+  taxType String @default("none")
+  taxValue Float @default(0)
+  taxAmount Int @default(0)
+  total Int
+  paymentMethod String @default("Tunai")
+  paymentStatus String @default("Lunas")
+  notes String?
+  recipientName String?
+  cashierName String?
+  fuelType String?
+  volume Float?
+  pricePerLiter Int?
+  vehicleNumber String?
+  dispenserNumber String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  businessProfile BusinessProfile? @relation(fields: [businessProfileId], references: [id], onDelete: SetNull)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  items ReceiptItem[]
+  @@index([userId, transactionDate])
+}
+
+model ReceiptItem {
+  id String @id @default(cuid())
+  receiptId String
+  name String
+  quantity Float
+  unitPrice Int
+  subtotal Int
+  receipt Receipt @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+}
+
+model BusinessProfile {
+  id String @id @default(cuid())
+  businessName String @default("Nama Usaha Anda")
+  logo String?
+  address String?
+  phone String?
+  email String?
+  website String?
+  npwp String?
+  bankInfo String?
+  isDefault Boolean @default(false)
+  userId String?
+  updatedAt DateTime @updatedAt
+  receipts Receipt[]
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PrintTemplate {
+  id String @id @default(cuid())
+  templateName String
+  templateType String
+  paperSize String
+  orientation String @default("portrait")
+  fontSize Int @default(12)
+  margin Int @default(12)
+  showLogo Boolean @default(true)
+  showCustomer Boolean @default(true)
+  showNotes Boolean @default(true)
+  isDefault Boolean @default(false)
+  userId String?
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
+}
+
+model User {
+  id String @id @default(cuid())
+  email String @unique
+  name String
+  passwordHash String
+  role String @default("owner")
+  ownerId String?
+  sessionVersion Int @default(0)
+  createdAt DateTime @default(now())
+  receipts Receipt[]
+  businessProfiles BusinessProfile[]
+  printTemplates PrintTemplate[]
+  @@index([ownerId])
+}

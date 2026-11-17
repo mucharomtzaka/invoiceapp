@@ -1,0 +1,10 @@
+node_modules
+.next
+src/generated/prisma
+*.db
+prisma/*.db
+.env
+dist
+release
+.desktop-build.lock
+desktop/assets/initial.db
