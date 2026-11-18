@@ -6,3 +6,110 @@
 @media print{@page{margin:0;size:auto}@page a4portrait{size:A4 portrait;margin:0}@page a4landscape{size:A4 landscape;margin:0}@page a5portrait{size:A5 portrait;margin:0}@page a5landscape{size:A5 landscape;margin:0}@page thermal58{size:58mm auto;margin:0}@page thermal80{size:80mm auto;margin:0}body{background:white!important}.sidebar,.topbar,.mobile-nav,.no-print,.preview-tools,.layout2>.card{display:none!important}.main{margin:0!important;padding:0!important;max-width:none!important}.preview-wrap{position:static!important}.paper{box-shadow:none!important;border:0!important;border-radius:0!important;margin:0 auto!important;max-width:none!important;min-height:0!important;break-inside:avoid}.paper.a4{page:a4portrait;width:210mm!important;padding:18mm!important}.paper.a4.landscape{page:a4landscape;width:297mm!important;min-height:210mm!important}.paper.a5{page:a5portrait;width:148mm!important;padding:12mm!important}.paper.a5.landscape{page:a5landscape;width:210mm!important;min-height:148mm!important}.paper.thermal{page:thermal58;width:58mm!important;padding:3mm!important}.paper.thermal.wide{page:thermal80;width:80mm!important}.receipt-modal{position:static!important;inset:auto!important;background:white!important;overflow:visible!important;padding:0!important}.receipt-modal>div{max-width:none!important;margin:0!important;padding:0!important;border-radius:0!important}.main:has(.receipt-modal)>:not(.receipt-modal){display:none!important}.print-area{display:block!important}}
 
 .auth-screen{min-height:100vh;display:grid;place-items:center;padding:24px;background:radial-gradient(circle at top left,#ecebff 0,transparent 42%),var(--bg)}.auth-card{width:min(100%,430px);background:#fff;border:1px solid var(--line);border-radius:16px;padding:32px;box-shadow:0 16px 48px #202b4412}.auth-brand{padding:0 0 22px}.auth-card h1{font-size:25px;margin:7px 0}.auth-form{display:grid;gap:15px;margin-top:22px}.auth-submit{width:100%;padding:12px}.auth-error{background:#fff0f0;color:#b42323;border:1px solid #f4d0d0;padding:10px 12px;border-radius:8px;font-size:12px}.auth-switch{text-align:center;margin-top:19px;color:var(--muted);font-size:13px}.auth-switch button{border:0;background:none;color:var(--primary);font-weight:700;padding:4px}
+
+/* Cetak thermal ESC/POS (Bluetooth & USB) */
+.tp-tabs{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:#f1f0ff;border-radius:10px;padding:4px}
+.tp-tabs button{border:0;background:none;color:#5f6b85;font-size:13px;font-weight:700;padding:9px 10px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;gap:7px;font-family:inherit}
+.tp-tabs button:hover{color:var(--primary)}
+.tp-tabs button.active{background:#fff;color:var(--primary);box-shadow:0 1px 4px #1c234014}
+.tp-overlay{position:fixed;inset:0;background:#10182899;z-index:30;display:flex;align-items:center;justify-content:center;padding:20px;overflow:auto}
+.tp-dialog{background:#fff;border-radius:14px;width:min(540px,100%);max-height:calc(100vh - 40px);display:flex;flex-direction:column;box-shadow:0 24px 60px #0f172a33;overflow:hidden}
+.tp-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:18px 20px;border-bottom:1px solid var(--line)}
+.tp-body{padding:18px 20px;display:flex;flex-direction:column;gap:14px;overflow:auto}
+.tp-foot{display:flex;justify-content:flex-end;gap:8px;padding:14px 20px;border-top:1px solid var(--line);background:#fff}
+.tp-status{display:flex;align-items:center;gap:11px;background:#f8f8ff;border:1px solid var(--line);border-radius:10px;padding:12px}
+.tp-dot{width:9px;height:9px;border-radius:50%;background:#cbd5e1;flex:0 0 auto}
+.tp-dot.on{background:var(--green);box-shadow:0 0 0 4px #159b681f}
+.tp-picker{display:flex;flex-direction:column;gap:7px;border:1px dashed var(--line);border-radius:10px;padding:12px}
+.tp-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tp-field{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:600;color:var(--muted)}
+.tp-field select,.tp-field input{border:1px solid var(--line);border-radius:8px;padding:9px 10px;font-size:13px;color:var(--text);background:#fff;width:100%}
+.tp-checks{display:grid;grid-template-columns:1fr 1fr;gap:7px 12px}
+.tp-check{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted);cursor:pointer}
+.tp-check input{accent-color:var(--primary)}
+.tp-note{font-size:12px;line-height:1.5;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:8px;padding:10px 12px}
+.tp-error{font-size:12px;line-height:1.5;background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;border-radius:8px;padding:10px 12px}
+.tp-detail{margin-top:8px}
+.tp-detail summary{cursor:pointer;font-weight:700;color:#991b1b;font-size:11px}
+.tp-detail code{display:block;margin-top:6px;padding:8px;background:#fff;border:1px solid #fecaca;border-radius:6px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:10px;line-height:1.5;white-space:pre-wrap;word-break:break-word;color:#7f1d1d}
+.tp-fallback{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--muted);background:#f8fafc;border:1px dashed var(--line);border-radius:8px;padding:10px 12px}
+.tp-ok{font-size:12px;line-height:1.5;background:#f0fdf4;border:1px solid #bbf7d0;color:#15803d;border-radius:8px;padding:10px 12px}
+.tp-preview{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;line-height:1.4;background:#fafafa;border:1px dashed var(--line);border-radius:8px;padding:12px;margin:0;white-space:pre;overflow:auto;max-height:280px}
+@keyframes tp-spin{to{transform:rotate(360deg)}}.tp-spin{animation:tp-spin 1s linear infinite}
+@media(max-width:560px){.tp-grid,.tp-checks{grid-template-columns:1fr}.tp-overlay{padding:0;align-items:flex-end}.tp-dialog{max-height:92vh;border-radius:14px 14px 0 0}}
+
+/* Struk thermal teks: pratinjau, cetak browser, dan PDF memakai layout ESC/POS */
+.thermal-sheet{background:#fff;color:#000;width:58mm;max-width:100%;margin:0 auto;padding:3mm;border-radius:3px;box-shadow:0 12px 30px #1c234014;overflow:hidden}
+.thermal-sheet.wide{width:80mm}
+.thermal-sheet pre{margin:0;font-family:'Courier New',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:2.5mm;line-height:1.35;font-weight:600;letter-spacing:0;white-space:pre;overflow-x:auto;overflow-y:hidden;color:#000}
+.thermal-sheet.wide pre{font-size:2.35mm}
+@media print{.thermal-sheet{box-shadow:none!important;border:0!important;border-radius:0!important;margin:0 auto!important;padding:3mm!important;width:58mm!important;max-width:none!important;overflow:visible!important;page:thermal58;break-inside:avoid}.thermal-sheet.wide{width:80mm!important;page:thermal80}.thermal-sheet pre{overflow:visible!important;font-size:2.5mm}.thermal-sheet.wide pre{font-size:2.35mm}}
+
+/* Dashboard analytics */
+.dash-charts{display:grid;gap:16px;margin-bottom:16px}
+.chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.chart-card{padding:18px 18px 14px}
+.chart-card .sectionhead{margin-bottom:8px}
+.chart-card h2{font-size:16px}
+.chart-range{display:inline-flex;gap:2px;background:#f1f0ff;border-radius:9px;padding:3px}
+.chart-range button{border:0;background:none;color:#5f6b85;font-size:12px;font-weight:700;padding:6px 10px;border-radius:7px;white-space:nowrap}
+.chart-range button.active{background:#fff;color:var(--primary);box-shadow:0 1px 4px #1c234014}
+.chart-empty{display:grid;place-items:center;min-height:150px;color:var(--muted);font-size:12px;text-align:center;background:#fafbfc;border:1px dashed var(--line);border-radius:10px;margin-top:8px;padding:18px}
+.bar-chart{display:flex;gap:10px;margin-top:4px}
+.bar-y{display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end;flex:0 0 46px;height:200px;padding-bottom:24px;font-size:10px;color:var(--muted)}
+.bar-plot{position:relative;flex:1;min-width:0;height:200px;padding-bottom:24px}
+.bar-grid{position:absolute;inset:0 0 24px 0;display:flex;flex-direction:column;justify-content:space-between;pointer-events:none}
+.bar-grid i{display:block;border-top:1px dashed #e8ebf2}
+.bar-columns{position:absolute;inset:0 0 24px 0;display:flex;align-items:flex-end;gap:3px}
+.bar-col{position:relative;display:flex;flex-direction:column;justify-content:flex-end;flex:1;height:100%;min-width:0}
+.bar-fill{width:100%;max-width:46px;margin:0 auto;border-radius:5px 5px 0 0;background:linear-gradient(180deg,#6d64f0,#5148e5);box-shadow:0 2px 6px #5148e526;transition:height .25s ease}
+.bar-col.empty .bar-fill{background:#e9ecf3;box-shadow:none}
+.bar-fill:hover{filter:brightness(1.06)}
+.bar-x{position:absolute;left:50%;bottom:-19px;transform:translateX(-50%);font-size:10px;color:var(--muted);white-space:nowrap}
+.donut-wrap{display:flex;align-items:center;gap:20px;flex-wrap:wrap;padding:6px 0 2px}
+.donut{position:relative;width:152px;height:152px;flex:0 0 auto}
+.donut svg{display:block;width:100%;height:100%}
+.donut-center{position:absolute;inset:0;display:grid;place-content:center;text-align:center}
+.donut-center b{font:800 24px 'Plus Jakarta Sans',sans-serif;line-height:1}
+.donut-center span{display:block;margin-top:3px;font-size:11px;color:var(--muted)}
+.chart-legend{list-style:none;margin:0;padding:0;display:grid;gap:9px;flex:1;min-width:150px}
+.chart-legend li{display:flex;align-items:center;gap:8px;font-size:12px}
+.chart-legend i{width:9px;height:9px;border-radius:3px;flex:0 0 auto}
+.chart-legend span{flex:1;color:#5f6b85}
+.chart-legend b{font-size:12px}
+.method-chart{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:13px}
+.method-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:5px;font-size:12px}
+.method-head span{font-weight:600}
+.method-head b{font-size:12px}
+.method-track{height:8px;background:#eef0f6;border-radius:99px;overflow:hidden}
+.method-track i{display:block;height:100%;border-radius:99px}
+.method-chart small{display:block;margin-top:4px;font-size:10px;color:var(--muted)}
+@media(max-width:1050px){.chart-grid{grid-template-columns:1fr}}
+@media(max-width:700px){.chart-card{padding:14px}.bar-y{flex-basis:36px;font-size:9px}.donut{width:132px;height:132px}.chart-range button{padding:5px 8px;font-size:11px}}
+
+/* Cegah halaman kosong kedua saat Cetak / PDF */
+@media print{
+  html,body{height:auto!important;min-height:0!important;max-height:none!important;margin:0!important;padding:0!important;background:#fff!important;overflow:visible!important}
+  .app,.main,.layout2,.preview-wrap,.receipt-modal,.receipt-modal>div{height:auto!important;min-height:0!important;max-height:none!important;overflow:visible!important}
+  .app,.layout2{display:block!important}
+  .layout2>.card,.preview-wrap>.preview-tools,.preview-tools{display:none!important}
+  .preview-wrap{display:block!important;width:auto!important;max-width:none!important;padding:0!important;margin:0!important}
+  .paper,.thermal-sheet{display:block;margin:0 auto!important;box-shadow:none!important;border:0!important;border-radius:0!important;break-inside:avoid;page-break-inside:avoid;break-after:avoid;page-break-after:avoid;min-height:0!important;max-height:none!important}
+  .paper.a4.landscape,.paper.a5.landscape{min-height:0!important;height:auto!important}
+  .receipt-modal{position:static!important;inset:auto!important;padding:0!important;margin:0!important}
+  .receipt-modal>div{padding:0!important;margin:0!important;border-radius:0!important;max-width:none!important}
+}
+
+/* Permukaan cetak khusus struk: hanya salinan struk yang ikut tercetak */
+#print-root{display:none}
+#print-root.measuring{display:block!important;position:absolute!important;top:0!important;left:-10000px!important;width:auto!important;visibility:hidden!important;pointer-events:none!important}
+@media print{
+  body.print-receipt > *:not(#print-root){display:none!important}
+  body.print-receipt{display:block!important;margin:0!important;padding:0!important;height:auto!important;min-height:0!important;max-height:none!important;background:#fff!important;overflow:visible!important}
+  body.print-receipt #print-root{display:block!important;margin:0!important;padding:0!important;height:auto!important;min-height:0!important;max-height:none!important;overflow:visible!important}
+  body.print-receipt #print-root .paper,body.print-receipt #print-root .thermal-sheet{page:auto!important;width:100%!important;max-width:none!important;margin:0!important;padding:18mm!important;min-height:0!important;max-height:none!important;box-shadow:none!important;border:0!important;border-radius:0!important;break-inside:auto!important;page-break-inside:auto!important;break-after:auto!important;page-break-after:auto!important}
+  body.print-receipt #print-root .paper.a5{padding:12mm!important}
+  body.print-receipt #print-root .paper.thermal,body.print-receipt #print-root .thermal-sheet{padding:3mm!important;page:auto!important}
+  body.print-receipt #print-root .thermal-sheet pre{overflow:visible!important;font-size:2.5mm}
+  body.print-receipt #print-root .thermal-sheet.wide pre{font-size:2.35mm}
+}

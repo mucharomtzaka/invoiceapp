@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, shell } = require('electron');
+const { app, BrowserWindow, dialog, shell, session, ipcMain } = require('electron');
 const { createServer } = require('node:http');
 const { randomBytes } = require('node:crypto');
 const fs = require('node:fs');
@@ -9,6 +9,8 @@ let mainWindow;
 let httpServer;
 let nextApp;
 let logFile;
+let pendingBluetoothCallback = null;
+let pendingUsbCallback = null;
 
 function getLogFile() {
   if (!logFile) logFile = path.join(app.getPath('userData'), 'logs', 'main.log');
@@ -108,6 +110,7 @@ async function createWindow() {
     show: false,
     backgroundColor: '#f6f7fb',
     webPreferences: {
+      preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
@@ -122,7 +125,36 @@ async function createWindow() {
     if (url.startsWith('https://') || url.startsWith('http://')) shell.openExternal(url);
     return { action: 'deny' };
   });
-  window.on('closed', () => { mainWindow = null; });
+  // Chromium meminta proses utama memilih perangkat Bluetooth. Daftar perangkat
+  // diteruskan ke renderer agar pengguna bisa memilih printer thermal sendiri.
+  // Event ini dapat terpicu berkali-kali selama pemindaian, jadi callback
+  // terbaru disimpan tanpa membatalkan permintaan yang masih berjalan.
+  window.webContents.on('select-bluetooth-device', (event, deviceList, callback) => {
+    event.preventDefault();
+    pendingBluetoothCallback = callback;
+    if (deviceList.length === 0) return;
+    const devices = deviceList.map(device => ({
+      deviceId: device.deviceId,
+      deviceName: device.deviceName || 'Perangkat Bluetooth',
+    }));
+    console.log('Bluetooth devices found', devices);
+    window.webContents.send('bluetooth:devices', devices);
+  });
+  // WebUSB memakai pemilih perangkat milik aplikasi karena Electron tidak
+  // menampilkan dialog USB bawaan Chromium. Listener dipasang sekali pada
+  // session (lihat configureUsbSelection) agar tidak menumpuk saat jendela
+  // dibuat ulang di macOS.
+  window.on('closed', () => {
+    if (pendingBluetoothCallback) {
+      pendingBluetoothCallback('');
+      pendingBluetoothCallback = null;
+    }
+    if (pendingUsbCallback) {
+      pendingUsbCallback();
+      pendingUsbCallback = null;
+    }
+    mainWindow = null;
+  });
 
   const url = app.isPackaged
     ? await startNextServer()
@@ -130,10 +162,98 @@ async function createWindow() {
   await window.loadURL(url);
 }
 
+app.commandLine.appendSwitch('enable-features', 'WebBluetooth,WebUSB');
+
+ipcMain.on('bluetooth:select', (_event, deviceId) => {
+  if (!pendingBluetoothCallback) return;
+  const callback = pendingBluetoothCallback;
+  pendingBluetoothCallback = null;
+  callback(String(deviceId || ''));
+});
+
+ipcMain.on('bluetooth:cancel', () => {
+  if (!pendingBluetoothCallback) return;
+  const callback = pendingBluetoothCallback;
+  pendingBluetoothCallback = null;
+  callback('');
+});
+
+ipcMain.on('usb:select', (_event, deviceId) => {
+  if (!pendingUsbCallback) return;
+  const callback = pendingUsbCallback;
+  pendingUsbCallback = null;
+  callback(String(deviceId || ''));
+});
+
+ipcMain.on('usb:cancel', () => {
+  if (!pendingUsbCallback) return;
+  const callback = pendingUsbCallback;
+  pendingUsbCallback = null;
+  // Tanpa argumen berarti pengguna membatalkan pemilihan perangkat.
+  callback();
+});
+
+function isLocalOrigin(origin) {
+  if (!origin) return false;
+  if (origin.startsWith('file://')) return true;
+  try {
+    const { hostname, protocol } = new URL(origin);
+    return protocol === 'http:' || protocol === 'https:'
+      ? hostname === '127.0.0.1' || hostname === 'localhost' || hostname === '[::1]' || hostname === '::1'
+      : false;
+  } catch {
+    return false;
+  }
+}
+
+function configurePermissions() {
+  const ses = session.defaultSession;
+  const allow = permission => permission === 'bluetooth' || permission === 'usb' || permission === 'fullscreen';
+  ses.setPermissionCheckHandler((_webContents, permission) => allow(permission));
+  ses.setPermissionRequestHandler((_webContents, permission, callback) => callback(allow(permission)));
+  // Perangkat USB yang sudah dipilih pengguna pada pemilih aplikasi diizinkan
+  // untuk origin lokal aplikasi ini. Tanpa handler ini Chromium dapat menolak
+  // akses perangkat setelah pemilihan selesai.
+  ses.setDevicePermissionHandler(details => {
+    if (details?.deviceType !== 'usb') return false;
+    return isLocalOrigin(details.origin);
+  });
+}
+
+// Dipanggil sekali setelah app siap. Chromium meminta proses utama memilih
+// perangkat USB saat halaman memanggil navigator.usb.requestDevice().
+function configureUsbSelection() {
+  session.defaultSession.on('select-usb-device', (event, details, callback) => {
+    event.preventDefault();
+    pendingUsbCallback = callback;
+    const deviceList = details?.deviceList || [];
+    if (deviceList.length === 0 || !mainWindow) {
+      // Tidak ada perangkat yang cocok: batalkan agar promise di renderer
+      // tidak menggantung dan panel bisa menampilkan pesan galat.
+      pendingUsbCallback = null;
+      callback();
+      return;
+    }
+    const devices = deviceList.map(device => {
+      const vendor = device.vendorId.toString(16).padStart(4, '0').toUpperCase();
+      const product = device.productId.toString(16).padStart(4, '0').toUpperCase();
+      const label = device.productName || device.manufacturerName || 'Printer USB';
+      return {
+        deviceId: device.deviceId,
+        deviceName: `${label} (${vendor}:${product})`,
+      };
+    });
+    console.log('USB devices found', devices);
+    mainWindow.webContents.send('usb:devices', devices);
+  });
+}
+
 app.setAppLogsPath();
 
 app.whenReady().then(async () => {
   try {
+    configurePermissions();
+    configureUsbSelection();
     console.log(`InvoiceApp ${app.getVersion()} starting`, {
       platform: process.platform,
       arch: process.arch,

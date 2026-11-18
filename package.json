@@ -1,6 +1,6 @@
 {
   "name": "kwitansi-app",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "main": "desktop/main.cjs",
   "scripts": {
@@ -53,6 +53,7 @@
     },
     "files": [
       "desktop/main.cjs",
+      "desktop/preload.cjs",
       ".next/**/*",
       "src/generated/prisma/**/*",
       "next.config.mjs",
@@ -69,7 +70,11 @@
         "dmg"
       ],
       "category": "public.app-category.business",
-      "identity": null
+      "identity": null,
+      "extendInfo": {
+        "NSBluetoothAlwaysUsageDescription": "InvoiceApp memakai Bluetooth untuk mencetak struk ke printer thermal.",
+        "NSBluetoothPeripheralUsageDescription": "InvoiceApp memakai Bluetooth untuk mencetak struk ke printer thermal."
+      }
     },
     "win": {
       "target": [
