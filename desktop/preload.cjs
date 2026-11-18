@@ -21,4 +21,5 @@ contextBridge.exposeInMainWorld('desktopBridge', {
   offUsbDevices: () => {
     ipcRenderer.removeAllListeners('usb:devices');
   },
+  listPrinters: () => ipcRenderer.invoke('printers:list'),
 });

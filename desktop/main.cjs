@@ -4,6 +4,7 @@ const { randomBytes } = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 const util = require('node:util');
+const { listPrinters } = require('./printers.cjs');
 
 let mainWindow;
 let httpServer;
@@ -191,6 +192,35 @@ ipcMain.on('usb:cancel', () => {
   pendingUsbCallback = null;
   // Tanpa argumen berarti pengguna membatalkan pemilihan perangkat.
   callback();
+});
+
+ipcMain.handle('printers:list', async event => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (!win) return [];
+  try {
+    return await listPrinters(win.webContents);
+  } catch (error) {
+    console.error('Gagal membaca daftar printer OS:', error);
+    return [];
+  }
+});
+
+ipcMain.on('print:native', (_event, html, title) => {
+  const win = BrowserWindow.fromWebContents(_event.sender);
+  if (!win) return;
+
+  win.webContents.print({
+    printBackground: true,
+    timeout: 30000,
+    type: 'save-as-pdf' // atau 'print' untuk cetak langsung ke printer
+    // origin: win.webContents.getURL(),
+    // title: title || 'InvoiceApp - Kwitansi',
+    // . . . other options
+  }, (success, errorType) => {
+    if (!success) {
+      console.error('Native print gagal:', errorType);
+    }
+  });
 });
 
 function isLocalOrigin(origin) {

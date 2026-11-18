@@ -431,3 +431,43 @@ export function cancelDesktopUsbSelection(): void {
   const bridge = (globalThis as { desktopBridge?: { cancelUsbSelection?: () => void } }).desktopBridge;
   bridge?.cancelUsbSelection?.();
 }
+
+/** Fungsi baca daftar printer USB yang sudah terhubung */
+export async function listUsbDevices(filters: UsbFilter[] = USB_PRINTER_FILTERS): Promise<UsbDeviceChoice[]> {
+  const usb = getUsb();
+  if (!usb) return Promise.resolve([]);
+
+  const rawDevices = await usb.getDevices?.() ?? [];
+  const matched: UsbDeviceChoice[] = [];
+  for (const device of rawDevices) {
+    let match = false;
+    for (const localFilter of filters) {
+      if (localFilter.classCode !== undefined) {
+        const ifaces = device.configuration?.interfaces ?? [];
+        for (const iface of ifaces) {
+          for (const alt of (iface.alternates ?? [iface.alternate ?? {}])) {
+            if (alt.interfaceClass === localFilter.classCode) {
+              match = true;
+              break;
+            }
+          }
+          if (match) break;
+        }
+        if (match) break;
+      }
+      if (localFilter.vendorId !== undefined && device.vendorId === localFilter.vendorId) {
+        match = true;
+      }
+      if (localFilter.classCode === undefined && localFilter.vendorId === undefined) {
+        match = true;
+      }
+    }
+    if (match) {
+      matched.push({
+        deviceId: device.vendorId.toString(16).padStart(4, '0') + ':' + device.productId.toString(16).padStart(4, '0'),
+        deviceName: device.productName || `USB ${device.vendorId.toString(16).padStart(4, '0')}:${device.productId.toString(16).padStart(4, '0')}`,
+      });
+    }
+  }
+  return matched;
+}

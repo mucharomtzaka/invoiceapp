@@ -1,8 +1,9 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, Bluetooth, CheckCircle2, Loader2, Printer, Usb, X } from 'lucide-react';
+import { AlertTriangle, Bluetooth, CheckCircle2, Download, Loader2, Printer, Usb, X } from 'lucide-react';
 import type { ReceiptDraft } from '@/lib/types';
 import { buildPrinterTest, buildReceiptEscPos, buildReceiptText, type ThermalPrintOptions, type ThermalWidth } from '@/lib/escpos';
+import { receiptImageLayout } from '@/lib/receipt-image';
 import {
   BluetoothThermalPrinter,
   cancelDesktopBluetoothSelection,
@@ -22,6 +23,7 @@ import {
   usbErrorDetail,
   type UsbDeviceChoice,
 } from '@/lib/usb-printer';
+import { listOsPrinters, type OsPrinter } from '@/lib/os-printers';
 
 type Props = {
   data: ReceiptDraft;
@@ -59,9 +61,11 @@ export function ThermalPrintButton({ data, business, toast, label = 'Cetak therm
   const [bluetoothSupported, setBluetoothSupported] = useState<boolean | null>(null);
   const [usbSupported, setUsbSupported] = useState<boolean | null>(null);
   const [desktop, setDesktop] = useState(false);
+  const [osPrinters, setOsPrinters] = useState<OsPrinter[]>([]);
   const printerRef = useRef<ThermalPrinter | null>(null);
   const mountedRef = useRef(true);
   const attemptRef = useRef(0);
+  const widthTouchedRef = useRef(false);
 
   const [options, setOptions] = useState<ThermalPrintOptions>({
     width: data.paperSize.includes('80') ? 80 : 58,
@@ -78,6 +82,7 @@ export function ThermalPrintButton({ data, business, toast, label = 'Cetak therm
   const [usbChunkSize, setUsbChunkSize] = useState(1024);
 
   const supported = transport === 'usb' ? usbSupported : bluetoothSupported;
+  const thermalOsPrinters = osPrinters.filter(printer => printer.thermal);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -104,6 +109,30 @@ export function ThermalPrintButton({ data, business, toast, label = 'Cetak therm
       : onDesktopBluetoothDevices(handleDevices as (devices: BluetoothDeviceChoice[]) => void);
     return unsubscribe;
   }, [open, desktop, transport]);
+
+  useEffect(() => {
+    if (!open || !desktop) return;
+    let cancelled = false;
+    void listOsPrinters().then(printers => {
+      if (cancelled || !mountedRef.current) return;
+      setOsPrinters(printers);
+      if (widthTouchedRef.current) return;
+      const widths = new Set(
+        printers
+          .filter(printer => printer.thermal)
+          .map(printer => printer.width)
+          .filter((width): width is 58 | 80 => width === 58 || width === 80),
+      );
+      if (widths.size === 1) {
+        const width = [...widths][0];
+        setOptions(current => (current.width === width ? current : { ...current, width }));
+      }
+    });
+    return () => {
+      cancelled = true;
+      widthTouchedRef.current = false;
+    };
+  }, [open, desktop]);
 
   const preview = useMemo(() => buildReceiptText(data, business, options), [data, business, options]);
 
@@ -221,6 +250,67 @@ export function ThermalPrintButton({ data, business, toast, label = 'Cetak therm
     }
   }
 
+  async function downloadPng() {
+    if (!data.items.length || data.items.every(item => !item.name.trim())) {
+      showError('Isi minimal satu item sebelum mengunduh struk.');
+      return;
+    }
+    setBusy(true);
+    clearError();
+    try {
+      const columns = options.width === 80 ? 48 : 32;
+      const font = '16px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
+      const measuring = document.createElement('canvas').getContext('2d');
+      if (!measuring) throw new Error('Canvas tidak tersedia di peramban ini.');
+      measuring.font = font;
+      const charWidth = Math.max(6, Math.ceil(measuring.measureText('M').width));
+      const lineHeight = 22;
+      const padding = 16;
+      const scale = 3;
+
+      const copies = Math.max(1, Math.min(9, options.copies || 1));
+      const feedLines = Math.max(0, Math.min(10, options.feedLines ?? 3));
+      const { width, height, lines } = receiptImageLayout(
+        preview,
+        columns,
+        copies,
+        feedLines,
+        charWidth,
+        lineHeight,
+        padding,
+      );
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width * scale;
+      canvas.height = height * scale;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Canvas tidak tersedia di peramban ini.');
+      ctx.scale(scale, scale);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, width, height);
+      ctx.fillStyle = '#000000';
+      ctx.font = font;
+      ctx.textBaseline = 'top';
+      lines.forEach((line, index) => ctx.fillText(line, padding, padding + index * lineHeight));
+
+      const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
+      if (!blob) throw new Error('Gagal membuat gambar PNG.');
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `struk-${(data.receiptNumber || 'thermal').replace(/[^a-z0-9-_]+/gi, '-')}.png`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      toast('Struk PNG berhasil diunduh.');
+    } catch (cause) {
+      showError(cause instanceof Error ? cause.message : 'Gagal mengunduh struk PNG.', cause);
+    } finally {
+      if (mountedRef.current) setBusy(false);
+    }
+  }
+
   async function testPrinter() {
     const printer = printerRef.current;
     if (!printer?.connected) {
@@ -244,9 +334,14 @@ export function ThermalPrintButton({ data, business, toast, label = 'Cetak therm
 
   return (
     <>
-      <button type="button" className="btn small" onClick={() => { clearError(); setOpen(true); }} title="Cetak struk thermal via Bluetooth atau USB">
-        <Printer size={14} /> {label}
-      </button>
+      <div className="inline" style={{ gap: 6 }}>
+        <button type="button" className="btn small" onClick={() => { clearError(); setOpen(true); }} title="Cetak struk thermal via Bluetooth atau USB">
+          <Printer size={14} /> {label}
+        </button>
+        <button type="button" className="btn small" onClick={downloadPng} disabled={busy} title="Unduh struk sebagai gambar PNG">
+          {busy ? <Loader2 size={14} className="tp-spin" /> : <Download size={14} />} Unduh PNG
+        </button>
+      </div>
       {open && (
         <div className="tp-overlay no-print" role="presentation" onClick={close}>
           <div className="tp-dialog" role="dialog" aria-modal="true" aria-label="Cetak thermal" onClick={event => event.stopPropagation()}>
@@ -269,6 +364,12 @@ export function ThermalPrintButton({ data, business, toast, label = 'Cetak therm
                   <Usb size={14} /> USB
                 </button>
               </div>
+
+              {desktop && thermalOsPrinters.length > 0 && (
+                <div className="tp-note">
+                  <b>Printer OS terdeteksi:</b> {thermalOsPrinters.map(printer => `${printer.displayName}${printer.width ? ` · ${printer.width} mm` : ''}`).join(' · ')}
+                </div>
+              )}
 
               {supported === false && (
                 <div className="tp-note">
@@ -329,7 +430,7 @@ export function ThermalPrintButton({ data, business, toast, label = 'Cetak therm
               <div className="tp-grid">
                 <label className="tp-field">
                   <span>Lebar kertas</span>
-                  <select value={options.width} onChange={event => set('width', Number(event.target.value) as ThermalWidth)}>
+                  <select value={options.width} onChange={event => { widthTouchedRef.current = true; set('width', Number(event.target.value) as ThermalWidth); }}>
                     <option value={58}>Thermal 58 mm · 32 kolom</option>
                     <option value={80}>Thermal 80 mm · 48 kolom</option>
                   </select>
@@ -391,7 +492,7 @@ export function ThermalPrintButton({ data, business, toast, label = 'Cetak therm
                 <label className="tp-check"><input type="checkbox" checked={options.showFooter !== false} onChange={event => set('showFooter', event.target.checked)} /> Tampilkan footer</label>
               </div>
 
-              <div>
+              <div className="inline" style={{ gap: 6 }}>
                 <button type="button" className="btn small" onClick={() => setShowPreview(value => !value)}>
                   {showPreview ? 'Sembunyikan pratinjau teks' : 'Lihat pratinjau teks struk'}
                 </button>
