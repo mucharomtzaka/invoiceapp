@@ -4,6 +4,7 @@ import {
   buildPrinterTest,
   buildReceiptEscPos,
   buildReceiptText,
+  encodeRaster,
   padLine,
   thermalColumns,
   thermalMoney,
@@ -35,6 +36,7 @@ const draft = {
   discountType: 'percent',
   discountValue: 10,
   dppLabel: 'DPP',
+  showDpp: true,
   taxType: 'percent',
   taxValue: 11,
   paymentMethod: 'Tunai',
@@ -60,7 +62,8 @@ test('lebar kolom thermal 58 mm dan 80 mm', () => {
 
 test('teks struk memakai nominal dan total yang sama dengan mesin hitung', () => {
   const text = buildReceiptText(draft, business, { width: 58 });
-  assert.match(text, /KW-20261118-001/);
+  assert.doesNotMatch(text, /KW-20261118-001/);
+  assert.doesNotMatch(text, /No\s+:/);
   assert.match(text, /Toko Sinar Jaya/);
   assert.match(text, /Subtotal\s+Rp350\.000/);
   assert.match(text, /Diskon\s+-Rp35\.000/);
@@ -96,13 +99,13 @@ test('ESC/POS diawali inisialisasi dan diakhiri perintah potong', () => {
   assert.deepEqual(Array.from(bytes.slice(0, 2)), [0x1b, 0x40]);
   const tail = Array.from(bytes.slice(-4));
   assert.deepEqual(tail, [0x1d, 0x56, 0x42, 0x00]);
-  assert.match(decode(bytes), /KW-20261118-001/);
+  assert.doesNotMatch(decode(bytes), /KW-20261118-001/);
 });
 
 test('jumlah salinan menggandakan isi dan potong dapat dimatikan', () => {
   const three = buildReceiptEscPos(draft, business, { width: 58, copies: 3 });
   const text = decode(three);
-  assert.equal(text.split('KW-20261118-001').length - 1, 3);
+  assert.equal(text.split('Toko Sinar Jaya').length - 1, 3);
 
   const noCut = buildReceiptEscPos(draft, business, { width: 58, cut: false });
   assert.equal(decode(noCut).includes(String.fromCharCode(0x1d, 0x56, 0x42, 0x00)), false);
@@ -119,13 +122,26 @@ test('transaksi BBM menampilkan detail bahan bakar', () => {
     pricePerLiter: 12000,
     vehicleNumber: 'B 1234 XYZ',
     dispenserNumber: '03',
+    spbuId: 'SPBU-12345',
+    spbuName: 'SPBU Cibubur',
   };
   const text = buildReceiptText(fuel, business, { width: 58 });
   assert.match(text, /BUKTI PEMBELIAN BBM/);
+  assert.match(text, /BBM-20261118-001/);
+  assert.match(text, /Waktu\s+: 09:30:15/);
+  assert.match(text, /ID SPBU\s+: SPBU-12345/);
+  assert.match(text, /Nama SPBU\s+: SPBU Cibubur/);
   assert.match(text, /Jenis BBM/);
   assert.match(text, /Pertamax/);
   assert.match(text, /Volume\s+: 20 Liter/);
   assert.match(text, /Kendaraan\s+: B 1234 XYZ/);
+});
+
+test('baris DPP hanya tampil bila diaktifkan', () => {
+  const active = buildReceiptText({ ...draft, showDpp: true }, business, { width: 58 });
+  assert.match(active, /DPP/);
+  const inactive = buildReceiptText({ ...draft, showDpp: false }, business, { width: 58 });
+  assert.doesNotMatch(inactive, /DPP/);
 });
 
 test('kuantitas pecahan tampil tanpa pembulatan', () => {
@@ -172,4 +188,29 @@ test('wrapText dan padLine menjaga lebar kolom', () => {
   const squeezed = padLine('Nama item yang sangat panjang sekali', 'Rp1.000.000', 32);
   assert.equal(squeezed.length, 32);
   assert.ok(squeezed.endsWith('Rp1.000.000'));
+});
+
+test('encodeRaster membuat perintah GS v 0 dengan bit yang benar', () => {
+  const pixels = new Uint8Array([1, 0, 1, 0]);
+  const bytes = encodeRaster(2, 2, pixels);
+  assert.equal(bytes[0], 0x1d);
+  assert.equal(bytes[1], 0x76);
+  assert.equal(bytes[2], 0x30);
+  assert.equal(bytes[3], 0x00);
+  assert.equal(bytes[4], 1); // bytesPerRow
+  assert.equal(bytes[5], 0);
+  assert.equal(bytes[6], 2); // height
+  assert.equal(bytes[7], 0);
+  assert.equal(bytes[8], 0b10000000);
+  assert.equal(bytes[9], 0b10000000);
+});
+
+test('buildReceiptEscPos menyertakan logo raster bila ada', () => {
+  const draft = { receiptNumber: 'BBM-001', transactionType: 'receipt', transactionDate: '2026-11-18', transactionTime: '', businessProfileId: '', customerName: 'Umum', customerAddress: '', description: '', orientation: 'portrait', paperSize: 'Thermal 58mm', items: [{ id: '1', name: 'Produk A', quantity: 1, unitPrice: 100000 }], discountType: 'none', discountValue: 0, dppLabel: 'DPP', showDpp: false, taxType: 'none', taxValue: 0, paymentMethod: 'Tunai', paymentStatus: 'Lunas', notes: '', recipientName: '', cashierName: '', fuelType: '', volume: 0, pricePerLiter: 0, vehicleNumber: '', dispenserNumber: '', spbuId: '', spbuName: '' };
+  const bytes = buildReceiptEscPos(draft, { businessName: 'Toko' }, { logoRaster: { width: 2, height: 2, pixels: new Uint8Array([1, 0, 1, 0]) } });
+  let found = false;
+  for (let i = 0; i < bytes.length - 3; i++) {
+    if (bytes[i] === 0x1d && bytes[i + 1] === 0x76 && bytes[i + 2] === 0x30) { found = true; break; }
+  }
+  assert.equal(found, true);
 });

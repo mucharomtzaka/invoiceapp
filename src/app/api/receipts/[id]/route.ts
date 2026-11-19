@@ -23,6 +23,9 @@ export async function PUT(request: Request, { params }: Context) {
     if (!Number.isFinite(data.discountValue) || data.discountValue < 0 || !Number.isFinite(data.taxValue) || data.taxValue < 0) {
       return NextResponse.json({ error: 'Diskon dan PPN harus berupa nilai nol atau positif.' }, { status: 400 });
     }
+    if (data.transactionType === 'fuel' && !String(data.receiptNumber || '').trim()) {
+      return NextResponse.json({ error: 'Nomor transaksi BBM wajib diisi.' }, { status: 400 });
+    }
     if (data.discountType === 'percent' && data.discountValue > 100) {
       return NextResponse.json({ error: 'Diskon persen tidak boleh melebihi 100%.' }, { status: 400 });
     }
@@ -37,17 +40,18 @@ export async function PUT(request: Request, { params }: Context) {
     const totals = calculate(data.items, data.discountType, data.discountValue, data.taxType, data.taxValue);
     const updateData = {
       receiptNumber: data.receiptNumber, transactionType: data.transactionType,
-      transactionDate: new Date(data.transactionDate), transactionTime: data.transactionTime,
+      transactionDate: new Date(data.transactionDate), transactionTime: data.transactionTime || '',
       businessProfileId: profile.id, customerName: data.customerName || 'Umum',
       customerAddress: data.customerAddress || null, description: data.description || null,
       orientation: data.orientation, paperSize: data.paperSize,
       subtotal: totals.subtotal, discountType: data.discountType, discountValue: data.discountValue,
-      discountAmount: totals.discountAmount, dppLabel: data.dppLabel || 'DPP', dpp: totals.dpp,
+      discountAmount: totals.discountAmount, dppLabel: data.dppLabel || 'DPP', showDpp: Boolean(data.showDpp), dpp: totals.dpp,
       taxType: data.taxType, taxValue: data.taxValue, taxAmount: totals.taxAmount, total: totals.total,
       paymentMethod: data.paymentMethod, paymentStatus: data.paymentStatus, notes: data.notes || null,
       recipientName: data.recipientName || null, cashierName: data.cashierName || null,
       fuelType: data.fuelType || null, volume: data.volume || null, pricePerLiter: data.pricePerLiter || null,
       vehicleNumber: data.vehicleNumber || null, dispenserNumber: data.dispenserNumber || null,
+      spbuId: data.spbuId || null, spbuName: data.spbuName || null,
     };
     const receipt = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const owned = await tx.receipt.findFirst({ where: { id, userId: session.workspaceId } });

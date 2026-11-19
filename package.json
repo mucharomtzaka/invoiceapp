@@ -54,6 +54,7 @@
     "files": [
       "desktop/main.cjs",
       "desktop/preload.cjs",
+      "desktop/printers.cjs",
       ".next/**/*",
       "src/generated/prisma/**/*",
       "next.config.mjs",

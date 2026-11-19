@@ -22,6 +22,7 @@ export function ThermalReceipt({ data, business }: { data: ReceiptDraft; busines
   );
   return (
     <article className={`thermal-sheet${width === 80 ? ' wide' : ''}`} aria-label="Pratinjau struk thermal">
+      {business?.logo && <img className="thermal-logo" src={business.logo} alt={`Logo ${business.businessName || 'usaha'}`} />}
       <pre>{text}</pre>
     </article>
   );

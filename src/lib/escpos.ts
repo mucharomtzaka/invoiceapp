@@ -18,6 +18,8 @@ export type ThermalPrintOptions = {
   showNotes?: boolean;
   showFooter?: boolean;
   footerText?: string;
+  /** Data raster logo (ESC/POS GS v 0), bila ada. */
+  logoRaster?: { width: number; height: number; pixels: Uint8Array };
 };
 
 type Alignment = 'left' | 'center';
@@ -161,14 +163,16 @@ function buildBlocks(data: ReceiptDraft, business: any, options: ThermalPrintOpt
   push(docTitle(data.transactionType), 'center', true);
   push('-'.repeat(columns));
 
-  pushMeta('No', data.receiptNumber || '-');
+  if (data.transactionType === 'fuel') pushMeta('No', data.receiptNumber || '-');
   pushMeta('Tanggal', formatDate(data.transactionDate));
-  pushMeta('Waktu', data.transactionTime || '-');
+  if (data.transactionType === 'fuel' && data.transactionTime) pushMeta('Waktu', data.transactionTime);
   if (data.cashierName) pushMeta('Kasir', data.cashierName);
   if (options.showCustomer !== false) pushMeta('Pelanggan', data.customerName || 'Umum');
 
   if (data.transactionType === 'fuel') {
     push('-'.repeat(columns));
+    if (data.spbuId) pushMeta('ID SPBU', data.spbuId);
+    if (data.spbuName) pushMeta('Nama SPBU', data.spbuName);
     pushMeta('Jenis BBM', data.fuelType || '-');
     pushMeta('Volume', `${thermalQuantity(Number(data.volume) || 0)} Liter`);
     pushMeta('Harga/Liter', thermalMoney(Number(data.pricePerLiter) || 0));
@@ -189,7 +193,7 @@ function buildBlocks(data: ReceiptDraft, business: any, options: ThermalPrintOpt
   push('-'.repeat(columns));
   push(padLine('Subtotal', thermalMoney(totals.subtotal), columns));
   if (totals.discountAmount > 0) push(padLine('Diskon', `-${thermalMoney(totals.discountAmount)}`, columns));
-  push(padLine(data.dppLabel || 'DPP', thermalMoney(totals.dpp), columns));
+  if (data.showDpp) push(padLine(data.dppLabel || 'DPP', thermalMoney(totals.dpp), columns));
   if (totals.taxAmount > 0) push(padLine(taxLabel(data), thermalMoney(totals.taxAmount), columns));
   push('-'.repeat(columns));
   push(padLine('TOTAL', thermalMoney(totals.total), columns), 'left', true);
@@ -235,6 +239,26 @@ function encodeAscii(text: string): Uint8Array {
   return bytes;
 }
 
+/** Kemas piksel hitam-putih menjadi perintah ESC/POS GS v 0 (raster bitmap). */
+export function encodeRaster(width: number, height: number, pixels: Uint8Array): Uint8Array {
+  const columns = Math.ceil(width / 8);
+  const data = new Uint8Array(columns * height);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (pixels[y * width + x]) data[y * columns + (x >> 3)] |= 1 << (7 - (x & 7));
+    }
+  }
+  const header = new Uint8Array([
+    GS, 0x76, 0x30, 0x00,
+    columns & 0xff, (columns >> 8) & 0xff,
+    height & 0xff, (height >> 8) & 0xff,
+  ]);
+  const output = new Uint8Array(header.length + data.length);
+  output.set(header, 0);
+  output.set(data, header.length);
+  return output;
+}
+
 class EscPosBuilder {
   private parts: Uint8Array[] = [];
   private align: Alignment | null = null;
@@ -243,6 +267,11 @@ class EscPosBuilder {
 
   raw(...bytes: number[]) {
     this.parts.push(new Uint8Array(bytes));
+    return this;
+  }
+
+  rawBytes(bytes: Uint8Array) {
+    this.parts.push(bytes);
     return this;
   }
 
@@ -327,6 +356,14 @@ export function buildReceiptEscPos(data: ReceiptDraft, business: any, options: T
   builder.raw(ESC, 0x40); // inisialisasi printer
   builder.raw(ESC, 0x74, 0x00); // codepage PC437
   builder.setAlign('left');
+
+  if (options.logoRaster) {
+    const { width, height, pixels } = options.logoRaster;
+    builder.setAlign('center');
+    builder.rawBytes(encodeRaster(width, height, pixels));
+    builder.line();
+    builder.setAlign('left');
+  }
 
   for (let copy = 0; copy < copies; copy++) {
     for (const block of blocks) {

@@ -12,7 +12,7 @@ const fields = (data: any) => ({
   bankInfo: data.bankInfo || null,
   logo: data.logo || null,
 });
-const invalidLogo = (logo: unknown) => logo != null && (
+const invalidLogo = (logo: unknown) => logo != null && logo !== '' && (
   typeof logo !== 'string' || logo.length > 2_800_000 ||
   !/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/]+=*$/.test(logo)
 );

@@ -97,6 +97,10 @@ function migrateUserManagement(dbPath) {
     if (!columns.has('ownerId')) database.exec('ALTER TABLE "User" ADD COLUMN "ownerId" TEXT');
     if (!columns.has('sessionVersion')) database.exec('ALTER TABLE "User" ADD COLUMN "sessionVersion" INTEGER NOT NULL DEFAULT 0');
     database.exec('CREATE INDEX IF NOT EXISTS "User_ownerId_idx" ON "User"("ownerId")');
+    const receiptColumns = new Set(database.prepare('PRAGMA table_info("Receipt")').all().map(column => column.name));
+    if (!receiptColumns.has('showDpp')) database.exec('ALTER TABLE "Receipt" ADD COLUMN "showDpp" BOOLEAN NOT NULL DEFAULT 0');
+    if (!receiptColumns.has('spbuId')) database.exec('ALTER TABLE "Receipt" ADD COLUMN "spbuId" TEXT');
+    if (!receiptColumns.has('spbuName')) database.exec('ALTER TABLE "Receipt" ADD COLUMN "spbuName" TEXT');
   } finally {
     database.close();
   }

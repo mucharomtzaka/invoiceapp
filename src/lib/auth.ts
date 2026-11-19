@@ -1,5 +1,5 @@
 import { createHmac, randomBytes, scrypt as scryptCallback, timingSafeEqual } from 'node:crypto';
-import { prisma } from '@/lib/prisma';
+import { prisma } from './prisma.ts';
 
 const scrypt = (password: string, salt: Buffer, length: number) => new Promise<Buffer>((resolve, reject) => {
   scryptCallback(password, salt, length, { N: 1 << 14, r: 8, p: 1, maxmem: 64 * 1024 * 1024 }, (error, derived) => {

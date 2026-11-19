@@ -4,6 +4,7 @@ import { AlertTriangle, Bluetooth, CheckCircle2, Download, Loader2, Printer, Usb
 import type { ReceiptDraft } from '@/lib/types';
 import { buildPrinterTest, buildReceiptEscPos, buildReceiptText, type ThermalPrintOptions, type ThermalWidth } from '@/lib/escpos';
 import { receiptImageLayout } from '@/lib/receipt-image';
+import { loadLogoImage, loadLogoRaster } from '@/lib/thermal-logo';
 import {
   BluetoothThermalPrinter,
   cancelDesktopBluetoothSelection,
@@ -240,7 +241,8 @@ export function ThermalPrintButton({ data, business, toast, label = 'Cetak therm
     setBusy(true);
     clearError();
     try {
-      const bytes = buildReceiptEscPos(data, business, options);
+      const logoRaster = business?.logo ? await loadLogoRaster(business.logo, options.width === 80 ? 576 : 384) : null;
+      const bytes = buildReceiptEscPos(data, business, { ...options, logoRaster: logoRaster ?? undefined });
       await printer.print(bytes, printOptions());
       toast(`Struk berhasil dikirim ke printer ${transport === 'usb' ? 'USB' : 'Bluetooth'}.`);
     } catch (cause) {
@@ -268,6 +270,9 @@ export function ThermalPrintButton({ data, business, toast, label = 'Cetak therm
       const padding = 16;
       const scale = 3;
 
+      const logo = business?.logo ? await loadLogoImage(business.logo, 120) : null;
+      const logoHeight = logo ? logo.height + 12 : 0;
+
       const copies = Math.max(1, Math.min(9, options.copies || 1));
       const feedLines = Math.max(0, Math.min(10, options.feedLines ?? 3));
       const { width, height, lines } = receiptImageLayout(
@@ -282,16 +287,20 @@ export function ThermalPrintButton({ data, business, toast, label = 'Cetak therm
 
       const canvas = document.createElement('canvas');
       canvas.width = width * scale;
-      canvas.height = height * scale;
+      canvas.height = (height + logoHeight) * scale;
       const ctx = canvas.getContext('2d');
       if (!ctx) throw new Error('Canvas tidak tersedia di peramban ini.');
       ctx.scale(scale, scale);
       ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, width, height);
+      ctx.fillRect(0, 0, width, height + logoHeight);
+      if (logo) {
+        const x = Math.max(0, (width - logo.width) / 2);
+        ctx.drawImage(logo.image, x, padding, logo.width, logo.height);
+      }
       ctx.fillStyle = '#000000';
       ctx.font = font;
       ctx.textBaseline = 'top';
-      lines.forEach((line, index) => ctx.fillText(line, padding, padding + index * lineHeight));
+      lines.forEach((line, index) => ctx.fillText(line, padding, padding + logoHeight + index * lineHeight));
 
       const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
       if (!blob) throw new Error('Gagal membuat gambar PNG.');
@@ -497,7 +506,7 @@ export function ThermalPrintButton({ data, business, toast, label = 'Cetak therm
                   {showPreview ? 'Sembunyikan pratinjau teks' : 'Lihat pratinjau teks struk'}
                 </button>
               </div>
-              {showPreview && <pre className="tp-preview">{preview}</pre>}
+              {showPreview && <>{business?.logo && <img className="thermal-logo" src={business.logo} alt="Logo usaha" />}<pre className="tp-preview">{preview}</pre></>}
 
               {error && (
                 <div className="tp-error">

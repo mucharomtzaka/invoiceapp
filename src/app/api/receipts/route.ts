@@ -1,19 +1,20 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
-import { calculate } from '@/lib/calculations';
+import { calculate, newNumber } from '@/lib/calculations';
 import { getSession } from '@/lib/auth';
 
 const schema = z.object({
-  receiptNumber: z.string().min(1), transactionType: z.string(), transactionDate: z.string(), transactionTime: z.string(),
+  receiptNumber: z.string().optional().default(''), transactionType: z.string(), transactionDate: z.string(), transactionTime: z.string().optional().default(''),
   businessProfileId: z.string().nullable().optional(), customerName: z.string().default('Umum'),
   customerAddress: z.string().optional(), description: z.string().optional(), orientation: z.string(), paperSize: z.string(),
   items: z.array(z.object({ name: z.string().min(1), quantity: z.number().nonnegative(), unitPrice: z.number().nonnegative() })).min(1),
-  discountType: z.string(), discountValue: z.number().nonnegative(), dppLabel: z.string().default('DPP'),
+  discountType: z.string(), discountValue: z.number().nonnegative(), dppLabel: z.string().default('DPP'), showDpp: z.boolean().optional().default(false),
   taxType: z.string(), taxValue: z.number().nonnegative(), paymentMethod: z.string(), paymentStatus: z.string(),
   notes: z.string().optional(), recipientName: z.string().optional(), cashierName: z.string().optional(),
   fuelType: z.string().optional(), volume: z.number().optional(), pricePerLiter: z.number().optional(),
   vehicleNumber: z.string().optional(), dispenserNumber: z.string().optional(),
+  spbuId: z.string().optional(), spbuName: z.string().optional(),
 });
 
 export async function GET(request: Request) {
@@ -34,6 +35,9 @@ export async function POST(request: Request) {
   if (!session) return NextResponse.json({ error: 'Silakan login.' }, { status: 401 });
   try {
     const data = schema.parse(await request.json());
+    if (data.transactionType === 'fuel' && !data.receiptNumber.trim()) {
+      return NextResponse.json({ error: 'Nomor transaksi BBM wajib diisi.' }, { status: 400 });
+    }
     if (data.discountType === 'percent' && data.discountValue > 100) {
       return NextResponse.json({ error: 'Diskon persen tidak boleh melebihi 100%.' }, { status: 400 });
     }
@@ -45,6 +49,8 @@ export async function POST(request: Request) {
     const receipt = await prisma.receipt.create({
       data: {
         ...data, userId: session.workspaceId, businessProfileId: profile.id, transactionDate: new Date(data.transactionDate),
+        receiptNumber: data.transactionType === 'fuel' ? data.receiptNumber.trim() : newNumber(data.transactionType === 'sale' ? 'INV' : 'KW'),
+        transactionTime: data.transactionTime || '',
         subtotal: totals.subtotal, discountAmount: totals.discountAmount, dpp: totals.dpp,
         taxAmount: totals.taxAmount, total: totals.total,
         items: { create: data.items.map((item, index) => ({ ...item, subtotal: totals.itemTotals[index] })) },

@@ -96,6 +96,7 @@ export function DashboardCharts({ receipts }: { receipts: ReceiptLike[] }) {
   }, [receipts]);
 
   const methodMax = Math.max(...methodData.map(item => item.total), 1);
+  const maxCount = Math.max(1, Math.ceil(Math.max(...series.map(point => point.count), 0) / 5) * 5);
   const hasData = receipts.length > 0;
   const activeStatusCount = statusData.filter(item => item.count > 0).length;
 
@@ -147,6 +148,49 @@ export function DashboardCharts({ receipts }: { receipts: ReceiptLike[] }) {
           </div>
         ) : (
           <div className="chart-empty">Transaksi yang tersimpan akan muncul sebagai grafik di sini.</div>
+        )}
+      </section>
+
+      <section className="card chart-card" style={{ gridColumn: '1 / -1' }}>
+        <div className="sectionhead">
+          <div>
+            <h2>Tren pembelian</h2>
+            <div className="eyebrow">Jumlah transaksi per hari · {range} hari terakhir</div>
+          </div>
+        </div>
+
+        {hasData ? (
+          <div className="bar-chart" role="img" aria-label={`Grafik pembelian ${range} hari terakhir`}>
+            <div className="bar-y" aria-hidden="true">
+              {[1, 0.75, 0.5, 0.25, 0].map(value => (
+                <span key={value}>{Math.round(maxCount * value)}</span>
+              ))}
+            </div>
+            <div className="bar-plot">
+              <div className="bar-grid" aria-hidden="true">
+                {[1, 0.75, 0.5, 0.25, 0].map((_, index) => <i key={index} />)}
+              </div>
+              <div className="bar-columns">
+                {series.map((point, index) => {
+                  const showLabel = range <= 7 || index % 5 === 0 || index === series.length - 1;
+                  const height = point.count > 0 ? Math.max(3, (point.count / maxCount) * 100) : 0;
+                  const label = `${point.date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })}`;
+                  return (
+                    <div className={`bar-col${point.count === 0 ? ' empty' : ''}`} key={point.key}>
+                      <div
+                        className="bar-fill purchase-fill"
+                        style={{ height: `${height}%` }}
+                        title={`${label} · ${point.count} pembelian`}
+                      />
+                      <span className="bar-x">{showLabel ? `${point.date.getDate()}/${point.date.getMonth() + 1}` : ''}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="chart-empty">Belum ada transaksi pada periode ini.</div>
         )}
       </section>
 

@@ -15,7 +15,7 @@ test('cookie sesi ditandatangani dan token yang berubah ditolak', () => {
   const token = createSession({ userId: 'user-1', email: 'akun@example.id', name: 'Pemilik' });
   const request = new Request('http://localhost/api/auth/session', { headers: { cookie: `invoiceapp_session=${token}` } });
   assert.deepEqual(readSession(request)?.userId, 'user-1');
-  const changed = `${token.slice(0, -1)}x`;
+  const changed = `${token.slice(0, 10)}${token[10] === 'a' ? 'b' : 'a'}${token.slice(11)}`;
   const changedRequest = new Request('http://localhost/api/auth/session', { headers: { cookie: `invoiceapp_session=${changed}` } });
   assert.equal(readSession(changedRequest), null);
 });
